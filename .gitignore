@@ -5,3 +5,4 @@ Python34/Lib/site-packages/PyQt5/qml
 Python34/Lib/site-packages/PyQt5/translations
 Python34/libs
 Python34/include
+*.pyi
