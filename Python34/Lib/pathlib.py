@@ -124,6 +124,20 @@ class _WindowsFlavour(_Flavour):
         {'LPT%d' % i for i in range(1, 10)}
         )
 
+    def gethomedir(self, username):
+        if not username:
+            try:
+                return os.environ['HOMEPATH']
+            except KeyError:
+                import pwd
+                return pwd.getpwuid(os.getuid()).pw_dir
+        else:
+            import pwd
+            try:
+                return pwd.getpwnam(username).pw_dir
+            except KeyError:
+                raise RuntimeError("Can't determine home directory "
+                                   "for %r" % username)
     # Interesting findings about extended paths:
     # - '\\?\c:\a', '//?/c:\a' and '//?/c:/a' are all supported
     #   but '\\?\c:/a' is not
@@ -955,6 +969,12 @@ class Path(PurePath):
     # Public API
 
     @classmethod
+    def home(cls):
+        """Return a new path pointing to the user's home directory (as
+        returned by os.path.expanduser('~')).
+        """
+        return cls(cls()._flavour.gethomedir(None))
+    @classmethod
     def cwd(cls):
         """Return a new path pointing to the current working directory
         (as returned by os.getcwd()).
@@ -1092,19 +1112,24 @@ class Path(PurePath):
         fd = self._raw_open(flags, mode)
         os.close(fd)
 
-    def mkdir(self, mode=0o777, parents=False):
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        """
+        Create a new directory at this given path.
+        """
         if self._closed:
             self._raise_closed()
-        if not parents:
+        try:
             self._accessor.mkdir(self, mode)
-        else:
-            try:
-                self._accessor.mkdir(self, mode)
-            except OSError as e:
-                if e.errno != ENOENT:
-                    raise
-                self.parent.mkdir(parents=True)
-                self._accessor.mkdir(self, mode)
+        except FileNotFoundError:
+            if not parents or self.parent == self:
+                raise
+            self.parent.mkdir(parents=True, exist_ok=True)
+            self.mkdir(mode, parents=False, exist_ok=exist_ok)
+        except OSError:
+            # Cannot rely on checking for EEXIST, since the operating system
+            # could give priority to other errors like EACCES or EROFS
+            if not exist_ok or not self.is_dir():
+                raise
 
     def chmod(self, mode):
         """

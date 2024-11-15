@@ -251,7 +251,7 @@ def contents(package) :
         return ()
     else:
         package_directory = Path(package.__spec__.origin).parent
-        return os.listdir(package_directory)
+        return os.listdir(str(package_directory))
 
 
 # Private implementation of ResourceReader and get_resource_reader() called

@@ -523,3 +523,19 @@ def unique(enumeration):
         raise ValueError('duplicate values found in %r: %s' %
                 (enumeration, alias_details))
     return enumeration
+
+
+class _auto_null:
+    def __repr__(self):
+        return '_auto_null'
+_auto_null = _auto_null()
+
+class auto:
+    """
+    Instances are replaced with an appropriate value in Enum class suites.
+    """
+    def __init__(self, value=_auto_null):
+        self.value = value
+
+    def __repr__(self):
+        return "auto(%r)" % self.value
